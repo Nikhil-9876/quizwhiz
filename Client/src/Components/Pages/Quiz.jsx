@@ -1,0 +1,532 @@
+import React, { useState, useEffect, useCallback, useRef } from "react";
+import axios from 'axios';
+import './Quiz.css';
+
+function Quiz() {
+  const [config, setConfig] = useState({
+    topic: "",
+    difficulty: "easy",
+    numQuestions: 5,
+    timerType: "individual",
+    timerDuration: 10,
+  });
+
+  const [showConfigModal, setShowConfigModal] = useState(true);
+  const [questions, setQuestions] = useState([]);
+  const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
+  const [error, setError] = useState(null);
+  const [userAnswers, setUserAnswers] = useState([]);
+  const [timer, setTimer] = useState(config.timerDuration);
+  const [totalTime, setTotalTime] = useState(config.timerDuration * config.numQuestions);
+  const [quizStarted, setQuizStarted] = useState(false);
+  const [quizFinished, setQuizFinished] = useState(false);
+  const [selectedOption, setSelectedOption] = useState(null);
+  const [startTime, setStartTime] = useState(null);
+  const [actualTimeTaken, setActualTimeTaken] = useState(0);
+  const [isTransitioning, setIsTransitioning] = useState(false);
+  const [quizResults, setQuizResults] = useState(null);
+  const [isLoading, setIsLoading] = useState(false);
+  const nextButtonRef = useRef(null);
+  
+  // Calculate progress percentage
+  const progress = (currentQuestionIndex / questions.length) * 100;
+
+  // Load saved configuration on component mount
+  useEffect(() => {
+    const savedTopic = localStorage.getItem("selectedTopic");
+    const savedDifficulty = localStorage.getItem("selectedDifficulty");
+    const savedNumQuestions = localStorage.getItem("numQuestions");
+
+    if (savedTopic || savedDifficulty || savedNumQuestions) {
+      setConfig(prevConfig => ({
+        ...prevConfig,
+        ...(savedTopic && { topic: savedTopic }),
+        ...(savedDifficulty && { difficulty: savedDifficulty }),
+        ...(savedNumQuestions && { numQuestions: parseInt(savedNumQuestions) })
+      }));
+    }
+  }, []);
+
+  // Configuration change handlers
+  const handleTopicChange = (e) => {
+    const newTopic = e.target.value;
+    setConfig((prevConfig) => ({ ...prevConfig, topic: newTopic }));
+    localStorage.setItem("selectedTopic", newTopic);
+  };
+
+  const handleDifficultyChange = (e) => {
+    const newDifficulty = e.target.value;
+    setConfig((prevConfig) => ({ ...prevConfig, difficulty: newDifficulty }));
+    localStorage.setItem("selectedDifficulty", newDifficulty);
+  };
+
+  const handleNumQuestionsChange = (e) => {
+    const newNumQuestions = parseInt(e.target.value);
+    setConfig((prevConfig) => ({ ...prevConfig, numQuestions: newNumQuestions }));
+    localStorage.setItem("numQuestions", newNumQuestions.toString());
+  };
+
+  // AI Question Generation
+  const handleCompletion = async () => {
+    setError(null);
+    setIsLoading(true);
+
+    try {
+      const apiKey = "AIzaSyAjGFif217NTM9i3-QFAVyl5FNdMo4Rx0k"; 
+      if (!apiKey) throw new Error("API Key is missing");
+
+      const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`;
+
+      const response = await fetch(url, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          contents: [
+            {
+              parts: [
+                {
+                  text: `Generate ${config.numQuestions} multiple-choice questions (MCQs) with difficulty level "${config.difficulty}" on the topic "${config.topic}". Return JSON only in the format:
+                  [
+                    {
+                      "id": 1,
+                      "text": "Question text?",
+                      "options": ["Option 1", "Option 2", "Option 3", "Option 4"],
+                      "correctAnswer": "Option X"
+                    },
+                    ...
+                  ]`,
+                },
+              ],
+            },
+          ],
+        }),
+      });
+
+      if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+
+      const data = await response.json();
+      let rawText = data?.candidates?.[0]?.content?.parts?.[0]?.text || "";
+      rawText = rawText.replace(/```json|```/g, "").trim();
+
+      let aiQuestions = [];
+      try {
+        aiQuestions = JSON.parse(rawText);
+      } catch (error) {
+        console.error("Error parsing AI response:", error);
+        throw new Error("Invalid AI-generated question format");
+      }
+
+      if (!Array.isArray(aiQuestions) || aiQuestions.length === 0) {
+        throw new Error("Empty or invalid AI-generated questions");
+      }
+
+      setQuestions(aiQuestions);
+      localStorage.setItem("quizQuestions", JSON.stringify(aiQuestions));
+      setIsLoading(false);
+      return aiQuestions;
+
+    } catch (err) {
+      console.error("Error in handleCompletion:", err.message);
+      setError(err.message);
+      setIsLoading(false);
+      return null;
+    }
+  };
+
+  // Configuration Submit Handler
+  const handleConfigSubmit = async () => {
+    setError(null);
+    setIsLoading(true);
+    
+    let parsedQuestions = [];
+    const storedQuestions = localStorage.getItem("quizQuestions");
+
+    try {
+      const aiQuestions = await handleCompletion();
+      
+      if (aiQuestions && aiQuestions.length > 0) {
+        parsedQuestions = aiQuestions;
+      } else if (storedQuestions) {
+        parsedQuestions = JSON.parse(storedQuestions);
+      } else {
+        parsedQuestions = Array.from({ length: config.numQuestions }, (_, i) => ({
+          id: i + 1,
+          text: `Question ${i + 1}: What is the answer?`,
+          options: ["Option 1", "Option 2", "Option 3", "Option 4"],
+          correctAnswer: "Option 1",
+        }));
+      }
+
+      setQuestions(parsedQuestions);
+      setShowConfigModal(false);
+      setQuizStarted(true);
+      setTimer(config.timerDuration);
+      setTotalTime(config.timerType === "individual" ? config.timerDuration * config.numQuestions : config.timerDuration * 60);
+      setStartTime(new Date());
+      setUserAnswers([]);
+      setCurrentQuestionIndex(0);
+      setQuizFinished(false);
+    } catch (error) {
+      console.error("Error parsing questions:", error);
+      setError("Failed to generate questions. Please try again.");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Memoize finish quiz callback
+  const finishQuiz = useCallback((answers) => {
+    const endTime = new Date();
+    const timeTaken = (endTime - startTime) / 1000;
+    setActualTimeTaken(timeTaken);
+    setQuizFinished(true);
+    setQuizStarted(false);
+
+    const userEmail = localStorage.getItem('token');
+
+    if (userEmail) {
+      const finalScore = answers.filter(
+        (answer, index) => answer === questions[index]?.correctAnswer
+      ).length;
+
+      const results = {
+        date: new Date().toISOString(),
+        topic: config.topic,
+        difficulty: config.difficulty,
+        timeTaken: timeTaken,
+        score: finalScore,
+        totalQuestions: questions.length,
+        email: userEmail
+      };
+
+      setQuizResults(results);
+
+      axios.post('http://localhost:5175/SaveQuizResults', results)
+        .then(response => {
+          console.log("Results saved successfully:", response.data);
+        })
+        .catch(error => {
+          console.error("Error saving results:", error.response?.data || error.message);
+        });
+    }
+  }, [config.difficulty, config.topic, questions, startTime]);
+
+  // Move to next question
+  const goToNextQuestion = useCallback(() => {
+    if (isTransitioning) return;
+    
+    setIsTransitioning(true);
+    
+    setTimeout(() => {
+      if (currentQuestionIndex < questions.length - 1) {
+        setCurrentQuestionIndex(prev => prev + 1);
+        if (config.timerType === "individual") {
+          setTimer(config.timerDuration);
+        }
+        setSelectedOption(null);
+      } else {
+        finishQuiz(userAnswers);
+      }
+      setIsTransitioning(false);
+    }, 500);
+  }, [currentQuestionIndex, questions.length, config.timerDuration, config.timerType, finishQuiz, userAnswers, isTransitioning]);
+
+  // Memoize time up handler
+  const handleTimeUp = useCallback(() => {
+    if (currentQuestionIndex < questions.length - 1) {
+      setCurrentQuestionIndex(prev => prev + 1);
+      setTimer(config.timerDuration);
+      setSelectedOption(null);
+    } else {
+      finishQuiz(userAnswers);
+    }
+  }, [currentQuestionIndex, questions.length, config.timerDuration, finishQuiz, userAnswers]);
+
+  // Answer Selection Handler
+  const handleAnswerSelect = (answer) => {
+    if (isTransitioning) return;
+    
+    setSelectedOption(answer);
+    
+    const newAnswers = [...userAnswers];
+    newAnswers[currentQuestionIndex] = answer;
+    setUserAnswers(newAnswers);
+  };
+
+  // Handle Enter key press
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (e.key === 'Enter' && quizStarted && !quizFinished && !showConfigModal) {
+        goToNextQuestion();
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [goToNextQuestion, quizStarted, quizFinished, showConfigModal]);
+
+  // Timer Effects
+  useEffect(() => {
+    let interval = null;
+    
+    if (quizStarted && !quizFinished && !isTransitioning) {
+      interval = setInterval(() => {
+        if (config.timerType === "individual") {
+          setTimer((prev) => {
+            if (prev <= 1) {
+              clearInterval(interval);
+              return 0;
+            }
+            return prev - 1;
+          });
+        } else {
+          setTotalTime((prev) => {
+            if (prev <= 1) {
+              clearInterval(interval);
+              return 0;
+            }
+            return prev - 1;
+          });
+        }
+      }, 1000);
+    }
+    
+    return () => {
+      if (interval) clearInterval(interval);
+    };
+  }, [quizStarted, quizFinished, config.timerType, isTransitioning]);
+
+  // Handle timer expiration
+  useEffect(() => {
+    if (quizStarted && !quizFinished && !isTransitioning) {
+      if (config.timerType === "individual" && timer === 0) {
+        handleTimeUp();
+      } else if (config.timerType === "collective" && totalTime === 0) {
+        finishQuiz(userAnswers);
+      }
+    }
+  }, [timer, totalTime, quizStarted, quizFinished, config.timerType, handleTimeUp, finishQuiz, userAnswers, isTransitioning]);
+
+  // Score Calculation
+  const calculateScore = () => {
+    return userAnswers.filter(
+      (answer, index) => answer === questions[index]?.correctAnswer
+    ).length;
+  };
+
+  // Time Formatting
+  const formatTime = (timeInSeconds) => {
+    const minutes = Math.floor(timeInSeconds / 60);
+    const seconds = Math.floor(timeInSeconds % 60);
+    return `${minutes}:${seconds < 10 ? "0" : ""}${seconds}`;
+  };
+
+  // Calculate percentage score
+  const calculatePercentage = () => {
+    return Math.round((calculateScore() / questions.length) * 100);
+  };
+
+  // Get feedback based on score
+  const getFeedback = () => {
+    const percentage = calculatePercentage();
+    if (percentage >= 90) return "Excellent!";
+    if (percentage >= 70) return "Great job!";
+    if (percentage >= 50) return "Good effort!";
+    return "Keep practicing!";
+  };
+
+  return (
+    <div className="quiz-page-wrapper">
+      {/* Configuration Modal */}
+      {showConfigModal && (
+        <div className="quiz-modal-overlay">
+          <div className="quiz-modal">
+            <h2 className="quiz-modal-title">Quiz Configuration</h2>
+            {error && <div className="quiz-error-message">{error}</div>}
+            
+            <label className="quiz-label">
+              Topic:
+              <input
+                type="text"
+                value={config.topic}
+                onChange={handleTopicChange}
+                className="quiz-input"
+                placeholder="Enter a topic for your quiz"
+              />
+            </label>
+            <label className="quiz-label">
+              Difficulty:
+              <select
+                value={config.difficulty}
+                onChange={handleDifficultyChange}
+                className="quiz-input"
+              >
+                <option value="easy">Easy</option>
+                <option value="medium">Medium</option>
+                <option value="hard">Hard</option>
+              </select>
+            </label>
+
+            <label className="quiz-label">
+              Number of Questions:
+              <input
+                type="number"
+                value={config.numQuestions}
+                onChange={handleNumQuestionsChange}
+                className="quiz-input"
+              />
+            </label>
+
+            <label className="quiz-label">
+              Timer Type:
+              <select
+                value={config.timerType}
+                onChange={(e) => setConfig({ ...config, timerType: e.target.value })}
+                className="quiz-input"
+              >
+                <option value="individual">Individual</option>
+                <option value="collective">Collective</option>
+              </select>
+            </label>
+            <label className="quiz-label">
+              Timer Duration ({config.timerType === "individual" ? "seconds" : "minutes"}):
+              <input
+                type="number"
+                value={config.timerDuration}
+                onChange={(e) =>
+                  setConfig({ ...config, timerDuration: parseInt(e.target.value) })
+                }
+                className="quiz-input"
+              />
+            </label>
+            <button 
+              onClick={handleConfigSubmit} 
+              className="quiz-button"
+              disabled={isLoading}
+            >
+              {isLoading ? (
+                <div className="quiz-spinner-container">
+                  <div className="quiz-spinner"></div>
+                  Generating Questions...
+                </div>
+              ) : (
+                "Start Quiz"
+              )}
+            </button>
+            
+            {isLoading && (
+              <div className="quiz-generating-message">
+                Please wait while we generate your quiz questions...
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Quiz Questions */}
+      {quizStarted && !quizFinished && (
+        <div className="quiz-container">
+          <div className="quiz-progress-container">
+            <div className="quiz-progress-bar" style={{ width: `${progress}%` }} />
+          </div>
+          
+          <h2 className="quiz-question-title">
+            <span className="quiz-question-number">
+              {currentQuestionIndex + 1}
+            </span>
+            Question {currentQuestionIndex + 1} of {questions.length}
+          </h2>
+          
+          <p className="quiz-question-text">{questions[currentQuestionIndex]?.text}</p>
+          
+          <div className="quiz-options-container">
+            {questions[currentQuestionIndex]?.options.map((option, index) => (
+              <button
+                key={index}
+                onClick={() => handleAnswerSelect(option)}
+                className={`quiz-option-button ${selectedOption === option ? 'quiz-option-selected' : ''}`}
+              >
+                {option}
+              </button>
+            ))}
+          </div>
+          
+          <button 
+            ref={nextButtonRef}
+            onClick={goToNextQuestion} 
+            className="quiz-next-button"
+          >
+            {currentQuestionIndex < questions.length - 1 ? 'Next' : 'Finish'}
+          </button>
+          
+          <p className="quiz-keyboard-hint">Press Enter to go to the next question</p>
+          
+          {config.timerType === "individual" ? (
+            <p className="quiz-timer">Time Remaining: {timer} seconds</p>
+          ) : (
+            <p className="quiz-timer">Total Time Remaining: {formatTime(totalTime)}</p>
+          )}
+        </div>
+      )}
+
+      {/* Quiz Results */}
+      {quizFinished && (
+        <div className="quiz-results-container">
+          <div className="quiz-results-card">
+            <h2 className="quiz-results-title">Quiz Results</h2>
+            
+            <div className="quiz-score-circle">
+              <div className="quiz-score-inner">
+                <span className="quiz-score-value">
+                  {calculateScore()}/{questions.length}
+                </span>
+                <span className="quiz-score-percentage">{calculatePercentage()}%</span>
+              </div>
+            </div>
+            
+            <div className="quiz-feedback">{getFeedback()}</div>
+            
+            <div className="quiz-results-details">
+              <div className="quiz-result-item">
+                <span className="quiz-result-label">Topic:</span>
+                <span className="quiz-result-value">{config.topic || "General"}</span>
+              </div>
+              
+              <div className="quiz-result-item">
+                <span className="quiz-result-label">Difficulty:</span>
+                <span className="quiz-result-value">{config.difficulty}</span>
+              </div>
+              
+              <div className="quiz-result-item">
+                <span className="quiz-result-label">Time taken:</span>
+                <span className="quiz-result-value">{actualTimeTaken.toFixed(2)} seconds</span>
+              </div>
+            </div>
+
+            {!localStorage.getItem('token') && (
+              <div className="quiz-not-logged-in-message">
+                You're not logged in. These results won't be saved to your profile.
+              </div>
+            )}
+            
+            <button 
+              onClick={() => {
+                setShowConfigModal(true);
+                setQuizFinished(false);
+              }} 
+              className="quiz-button quiz-new-button"
+            >
+              New Quiz
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+export default Quiz;

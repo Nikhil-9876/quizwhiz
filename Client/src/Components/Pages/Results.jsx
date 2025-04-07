@@ -20,7 +20,7 @@ function Results() {
     }
 
     setIsLoggedIn(true);
-    fetch(`http://localhost:5175/GetUserResults/${token}`)
+    fetch(`http://localhost:10000/GetUserResults/${token}`)
       .then(response => {
         if (!response.ok) {
           throw new Error('Failed to fetch results');

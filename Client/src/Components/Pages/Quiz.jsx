@@ -197,7 +197,7 @@ function Quiz() {
 
       setQuizResults(results);
 
-      axios.post('http://localhost:5175/SaveQuizResults', results)
+      axios.post('http://localhost:10000/SaveQuizResults', results)
         .then(response => {
           console.log("Results saved successfully:", response.data);
         })

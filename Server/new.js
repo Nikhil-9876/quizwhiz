@@ -76,6 +76,6 @@ app.post('/SaveQuizResults', async (req, res) => {
       }
     });
 
-app.listen(5175, () => {
-    console.log("Server Running on port 5175");
+app.listen(10000, () => {
+    console.log("Server Running on port 10000");
 });

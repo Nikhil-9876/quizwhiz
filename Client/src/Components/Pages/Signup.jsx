@@ -122,7 +122,7 @@ function Signup() {
             setIsLoading(true);
             setErrors(prev => ({ ...prev, form: "" }));
             
-            axios.post('http://localhost:5175/Signup', {
+            axios.post('http://localhost:10000/Signup', {
                 name: formData.name,
                 email: formData.email,
                 password: formData.password

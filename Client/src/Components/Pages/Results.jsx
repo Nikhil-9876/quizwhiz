@@ -20,7 +20,7 @@ function Results() {
     }
 
     setIsLoggedIn(true);
-    fetch(`http://localhost:10000/GetUserResults/${token}`)
+    fetch(`https://quizwhiz-ntn9.onrender.com/GetUserResults/${token}`)
       .then(response => {
         if (!response.ok) {
           throw new Error('Failed to fetch results');

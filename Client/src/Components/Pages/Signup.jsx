@@ -122,7 +122,7 @@ function Signup() {
             setIsLoading(true);
             setErrors(prev => ({ ...prev, form: "" }));
             
-            axios.post('http://localhost:10000/Signup', {
+            axios.post('https://quizwhiz-ntn9.onrender.com/Signup', {
                 name: formData.name,
                 email: formData.email,
                 password: formData.password

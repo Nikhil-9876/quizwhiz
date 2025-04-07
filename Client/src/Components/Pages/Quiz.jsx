@@ -28,10 +28,8 @@ function Quiz() {
   const [isLoading, setIsLoading] = useState(false);
   const nextButtonRef = useRef(null);
   
-  // Calculate progress percentage
   const progress = (currentQuestionIndex / questions.length) * 100;
 
-  // Load saved configuration on component mount
   useEffect(() => {
     const savedTopic = localStorage.getItem("selectedTopic");
     const savedDifficulty = localStorage.getItem("selectedDifficulty");
@@ -47,7 +45,6 @@ function Quiz() {
     }
   }, []);
 
-  // Configuration change handlers
   const handleTopicChange = (e) => {
     const newTopic = e.target.value;
     setConfig((prevConfig) => ({ ...prevConfig, topic: newTopic }));
@@ -66,7 +63,6 @@ function Quiz() {
     localStorage.setItem("numQuestions", newNumQuestions.toString());
   };
 
-  // AI Question Generation
   const handleCompletion = async () => {
     setError(null);
     setIsLoading(true);
@@ -135,7 +131,6 @@ function Quiz() {
     }
   };
 
-  // Configuration Submit Handler
   const handleConfigSubmit = async () => {
     setError(null);
     setIsLoading(true);
@@ -176,8 +171,7 @@ function Quiz() {
     }
   };
 
-  // Memoize finish quiz callback
-  const finishQuiz = useCallback((answers) => {
+    const finishQuiz = useCallback((answers) => {
     const endTime = new Date();
     const timeTaken = (endTime - startTime) / 1000;
     setActualTimeTaken(timeTaken);
@@ -213,7 +207,6 @@ function Quiz() {
     }
   }, [config.difficulty, config.topic, questions, startTime]);
 
-  // Move to next question
   const goToNextQuestion = useCallback(() => {
     if (isTransitioning) return;
     
@@ -233,7 +226,6 @@ function Quiz() {
     }, 500);
   }, [currentQuestionIndex, questions.length, config.timerDuration, config.timerType, finishQuiz, userAnswers, isTransitioning]);
 
-  // Memoize time up handler
   const handleTimeUp = useCallback(() => {
     if (currentQuestionIndex < questions.length - 1) {
       setCurrentQuestionIndex(prev => prev + 1);
@@ -244,7 +236,6 @@ function Quiz() {
     }
   }, [currentQuestionIndex, questions.length, config.timerDuration, finishQuiz, userAnswers]);
 
-  // Answer Selection Handler
   const handleAnswerSelect = (answer) => {
     if (isTransitioning) return;
     
@@ -255,7 +246,6 @@ function Quiz() {
     setUserAnswers(newAnswers);
   };
 
-  // Handle Enter key press
   useEffect(() => {
     const handleKeyDown = (e) => {
       if (e.key === 'Enter' && quizStarted && !quizFinished && !showConfigModal) {
@@ -269,7 +259,6 @@ function Quiz() {
     };
   }, [goToNextQuestion, quizStarted, quizFinished, showConfigModal]);
 
-  // Timer Effects
   useEffect(() => {
     let interval = null;
     
@@ -300,7 +289,6 @@ function Quiz() {
     };
   }, [quizStarted, quizFinished, config.timerType, isTransitioning]);
 
-  // Handle timer expiration
   useEffect(() => {
     if (quizStarted && !quizFinished && !isTransitioning) {
       if (config.timerType === "individual" && timer === 0) {
@@ -311,26 +299,22 @@ function Quiz() {
     }
   }, [timer, totalTime, quizStarted, quizFinished, config.timerType, handleTimeUp, finishQuiz, userAnswers, isTransitioning]);
 
-  // Score Calculation
   const calculateScore = () => {
     return userAnswers.filter(
       (answer, index) => answer === questions[index]?.correctAnswer
     ).length;
   };
 
-  // Time Formatting
   const formatTime = (timeInSeconds) => {
     const minutes = Math.floor(timeInSeconds / 60);
     const seconds = Math.floor(timeInSeconds % 60);
     return `${minutes}:${seconds < 10 ? "0" : ""}${seconds}`;
   };
 
-  // Calculate percentage score
   const calculatePercentage = () => {
     return Math.round((calculateScore() / questions.length) * 100);
   };
 
-  // Get feedback based on score
   const getFeedback = () => {
     const percentage = calculatePercentage();
     if (percentage >= 90) return "Excellent!";
@@ -341,7 +325,6 @@ function Quiz() {
 
   return (
     <div className="quiz-page-wrapper">
-      {/* Configuration Modal */}
       {showConfigModal && (
         <div className="quiz-modal-overlay">
           <div className="quiz-modal">
@@ -427,7 +410,6 @@ function Quiz() {
         </div>
       )}
 
-      {/* Quiz Questions */}
       {quizStarted && !quizFinished && (
         <div className="quiz-container">
           <div className="quiz-progress-container">
@@ -473,7 +455,6 @@ function Quiz() {
         </div>
       )}
 
-      {/* Quiz Results */}
       {quizFinished && (
         <div className="quiz-results-container">
           <div className="quiz-results-card">

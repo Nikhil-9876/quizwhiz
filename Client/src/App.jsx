@@ -11,10 +11,8 @@ import Results from './Components/Pages/Results';
 const Layout = () => {
   const location = useLocation();
   
-  // Define routes where header should be hidden
   const hideHeader = ['/login', '/signup'].includes(location.pathname.toLowerCase());
   
-  // Define routes where footer should be hidden
   const hideFooter = ['/login', '/signup', '/quiz'].includes(location.pathname.toLowerCase());
 
   return (

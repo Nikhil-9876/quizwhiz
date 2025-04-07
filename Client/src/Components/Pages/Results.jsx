@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import ResultBox from '../../assets/ResultBox';
 import { useNavigate } from 'react-router-dom';
 import { PieChart, BarChart, Bar, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
-import './Results.css'; // Create this CSS file for styling
+import './Results.css'; 
 
 function Results() {
   const token = localStorage.getItem('token');
@@ -13,14 +13,12 @@ function Results() {
   const [isLoggedIn, setIsLoggedIn] = useState(!!token);
   
   useEffect(() => {
-    // Check if user is logged in
     if (!token) {
       setIsLoggedIn(false);
       setLoading(false);
       return;
     }
 
-    // User is logged in, fetch their results
     setIsLoggedIn(true);
     fetch(`http://localhost:5175/GetUserResults/${token}`)
       .then(response => {
@@ -39,20 +37,17 @@ function Results() {
       });
   }, [token]);
 
-  // Function to format time taken (seconds to MM:SS)
   const formatTime = (seconds) => {
     const mins = Math.floor(seconds / 60);
     const secs = Math.floor(seconds % 60);
     return `${mins}:${secs < 10 ? '0' : ''}${secs}`;
   };
 
-  // Function to format date
   const formatDate = (dateString) => {
     const options = { year: 'numeric', month: 'short', day: 'numeric' };
     return new Date(dateString).toLocaleDateString(undefined, options);
   };
 
-  // Prepare data for pie chart (topics distribution)
   const getTopicsData = () => {
     const topicMap = {};
     
@@ -67,13 +62,11 @@ function Results() {
     return Object.keys(topicMap).map(topic => ({
       name: topic,
       value: topicMap[topic],
-      color: getRandomColor() // Assign a color to each topic
+      color: getRandomColor()
     }));
   };
 
-  // Prepare data for accuracy trend
   const getAccuracyTrendData = () => {
-    // Sort results by date
     const sortedResults = [...results].sort((a, b) => 
       new Date(a.date) - new Date(b.date)
     );
@@ -86,7 +79,6 @@ function Results() {
     }));
   };
 
-  // Helper function to generate random colors for pie chart
   const getRandomColor = () => {
     const letters = '0123456789ABCDEF';
     let color = '#';
@@ -96,7 +88,6 @@ function Results() {
     return color;
   };
 
-  // Calculate overall statistics
   const calculateStats = () => {
     if (results.length === 0) return null;
     
@@ -116,7 +107,6 @@ function Results() {
     };
   };
 
-  // Find topic with highest average score
   const getBestTopic = () => {
     const topicStats = {};
     
@@ -151,25 +141,21 @@ function Results() {
     };
   };
 
-  // Calculate accuracy improvement over time
   const calculateImprovement = () => {
     if (results.length < 2) return 'N/A';
     
     const sorted = [...results].sort((a, b) => new Date(a.date) - new Date(b.date));
     
-    // Get first 20% and last 20% of results to smooth out variability
     const segmentSize = Math.max(1, Math.floor(sorted.length * 0.2));
     const firstSegment = sorted.slice(0, segmentSize);
     const lastSegment = sorted.slice(-segmentSize);
     
-    // Calculate average accuracy for first and last segments
     const firstAccuracy = firstSegment.reduce((sum, result) => 
       sum + (result.score / result.totalQuestions), 0) / firstSegment.length * 100;
     
     const lastAccuracy = lastSegment.reduce((sum, result) => 
       sum + (result.score / result.totalQuestions), 0) / lastSegment.length * 100;
     
-    // Calculate percentage improvement
     const improvement = lastAccuracy - firstAccuracy;
     
     return {
@@ -178,12 +164,10 @@ function Results() {
     };
   };
 
-  // Render different messages based on user state
   if (loading) {
     return <div className="loading">Loading your results...</div>;
   }
 
-  // Message for users who are not logged in
   if (!isLoggedIn) {
     return (
       <div className="not-logged-in-container">
@@ -209,7 +193,6 @@ function Results() {
     );
   }
 
-  // Message for logged-in users with no quiz results
   if (results.length === 0) {
     return (
       <div className="no-results-container">
@@ -235,7 +218,6 @@ function Results() {
     <div className="results-container">
       <h1 className='text-2xl font-bold'>Your Quiz Analytics</h1>
       
-      {/* Statistics Overview */}
       <div className="stats-overview">
         <h2 className='text-xl pl-1 mt-2'>Overall Performance</h2>
         <div className="stats-grid">
@@ -268,7 +250,6 @@ function Results() {
         </div>
       </div>
       
-      {/* Charts Section */}
       <div className="charts-section">
         <div className="chart-container">
           <h2>Topics Distribution</h2>
@@ -312,7 +293,6 @@ function Results() {
         </div>
       </div>
       
-      {/* Individual Results */}
       <h2>Your Quiz Results</h2>
       <div className="results-list">
         {results.map((result, index) => (

@@ -8,8 +8,7 @@ const app = express();
 app.use(express.json());
 app.use(cors());
 
-// Connect to MongoDB
-mongoose.connect("mongodb://localhost:27017/UserDetails")
+mongoose.connect("mongodb+srv://nikhilsolanki9876:23bce198@cluster0.a9bwwoh.mongodb.net/UserDetails")
     .then(() => {
         console.log("MongoDB connected");
     })
@@ -17,14 +16,12 @@ mongoose.connect("mongodb://localhost:27017/UserDetails")
         console.log("Failed to connect MongoDB");
     });
 
-// Signup Route
 app.post('/Signup', (req, res) => {
     SignUpModel.create(req.body)
         .then(userDetails => res.json({ message: "User registered successfully!", userDetails }))
         .catch(err => res.status(500).json({ error: err.message }));
 });
 
-// Login Route with JWT
 app.post('/Login', async (req, res) => {
     const { email, password } = req.body;
     try {
@@ -38,24 +35,22 @@ app.post('/Login', async (req, res) => {
     }
 });
 
-// In your backend route (e.g., routes/results.js)
 app.post('/SaveQuizResults', async (req, res) => {
     try {
       const { date, topic, difficulty, timeTaken, score, totalQuestions, email } = req.body;
       
-      // Add validation
       if (!email) {
         return res.status(400).json({ message: 'Email is required' });
       }
   
       const newResult = new Results({
-        date: date || new Date(), // Fallback to current date
+        date: date || new Date(), 
         topic,
         difficulty,
         timeTaken,
         score,
         totalQuestions,
-        email // This must match your schema
+        email 
       });
   
       await newResult.save();
@@ -65,7 +60,7 @@ app.post('/SaveQuizResults', async (req, res) => {
       res.status(500).json({ 
         message: 'Error saving results',
         error: error.message,
-        fullError: error // For debugging
+        fullError: error 
       });
     }
   });

@@ -15,16 +15,10 @@ function Header() {
       setIsLoggedIn(!!token);
     };
 
-    // Check immediately
     checkAuth();
-
-    // Listen for storage changes (if login happens in another tab)
     window.addEventListener('storage', checkAuth);
-
-    // Listen for our custom auth events (from the same tab)
     window.addEventListener('auth-change', checkAuth);
 
-    // Cleanup
     return () => {
       window.removeEventListener('storage', checkAuth);
       window.removeEventListener('auth-change', checkAuth);
@@ -34,7 +28,6 @@ function Header() {
   const handleLogout = () => {
     localStorage.removeItem('token');
     console.log("Token removed from local storage: " + localStorage.getItem('token'));
-    // Dispatch event to update all components
     window.dispatchEvent(new Event('auth-change'));
   };
 

@@ -31,7 +31,6 @@ function Signup() {
     const [isLoading, setIsLoading] = useState(false);
     const navigate = useNavigate();
 
-    // Validation rules
     const validate = () => {
         const newErrors = {
             name: "",
@@ -42,7 +41,6 @@ function Signup() {
         };
         let isValid = true;
 
-        // Name validation
         if (!formData.name.trim()) {
             newErrors.name = "Full name is required";
             isValid = false;
@@ -51,7 +49,6 @@ function Signup() {
             isValid = false;
         }
 
-        // Email validation
         if (!formData.email) {
             newErrors.email = "Email is required";
             isValid = false;
@@ -60,7 +57,6 @@ function Signup() {
             isValid = false;
         }
 
-        // Password validation
         if (!formData.password) {
             newErrors.password = "Password is required";
             isValid = false;
@@ -78,7 +74,6 @@ function Signup() {
             isValid = false;
         }
 
-        // Confirm password validation
         if (!formData.confirmPassword) {
             newErrors.confirmPassword = "Please confirm your password";
             isValid = false;
@@ -91,7 +86,6 @@ function Signup() {
         return isValid;
     };
 
-    // Validate when form data changes and fields have been touched
     useEffect(() => {
         if (Object.values(touched).some(field => field)) {
             validate();
@@ -117,7 +111,6 @@ function Signup() {
     const handleSubmit = (e) => {
         e.preventDefault();
         
-        // Mark all fields as touched to show errors
         setTouched({
             name: true,
             email: true,
@@ -168,7 +161,6 @@ function Signup() {
                                 </div>
                             </div>
                             
-                            {/* Form Section */}
                             <div className="card-body p-5">
                                 <form onSubmit={handleSubmit} noValidate>
                                     {/* Name Field */}
@@ -198,7 +190,6 @@ function Signup() {
                                         </div>
                                     </div>
 
-                                    {/* Email Field */}
                                     <div className="mb-3">
                                         <label htmlFor="email" className="form-label fw-medium text-muted">Email Address</label>
                                         <div className="input-group has-validation">
@@ -225,7 +216,6 @@ function Signup() {
                                         </div>
                                     </div>
 
-                                    {/* Password Field */}
                                     <div className="mb-3">
                                         <label htmlFor="password" className="form-label fw-medium text-muted">Password</label>
                                         <div className="input-group has-validation">
@@ -255,7 +245,6 @@ function Signup() {
                                         </div>
                                     </div>
 
-                                    {/* Confirm Password Field */}
                                     <div className="mb-4">
                                         <label htmlFor="confirmPassword" className="form-label fw-medium text-muted">Confirm Password</label>
                                         <div className="input-group has-validation">
@@ -282,7 +271,6 @@ function Signup() {
                                         </div>
                                     </div>
 
-                                    {/* Form Error Message */}
                                     {errors.form && (
                                         <div className="alert alert-danger alert-dismissible fade show d-flex align-items-center mb-4">
                                             <FaExclamationCircle className="me-2 flex-shrink-0" />
@@ -295,7 +283,6 @@ function Signup() {
                                         </div>
                                     )}
 
-                                    {/* Submit Button */}
                                     <div className="d-grid mb-3">
                                         <button 
                                             type="submit" 
@@ -316,7 +303,6 @@ function Signup() {
                                         </button>
                                     </div>
 
-                                    {/* Divider */}
                                     <div className="position-relative my-4">
                                         <hr />
                                         <div className="position-absolute top-50 start-50 translate-middle bg-white px-2 small text-muted">
@@ -324,7 +310,6 @@ function Signup() {
                                         </div>
                                     </div>
 
-                                    {/* Login Link */}
                                     <div className="text-center">
                                         <p className="mb-0">Already have an account? 
                                         <Link to="/login" className="text-decoration-none text-primary fw-medium ms-1">

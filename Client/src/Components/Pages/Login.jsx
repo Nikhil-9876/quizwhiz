@@ -30,7 +30,6 @@ function Login() {
         };
         let isValid = true;
 
-        // Email validation
         if (!formData.email) {
             newErrors.email = 'Email is required';
             isValid = false;
@@ -39,7 +38,6 @@ function Login() {
             isValid = false;
         }
 
-        // Password validation
         if (!formData.password) {
             newErrors.password = 'Password is required';
             isValid = false;
@@ -52,7 +50,6 @@ function Login() {
         return isValid;
     };
 
-    // Validate on change when field has been touched
     useEffect(() => {
         if (Object.values(touched).some(field => field)) {
             validate();
@@ -92,7 +89,6 @@ function Login() {
                     localStorage.setItem('token', formData.email);
                     console.log("Token stored in local storage: "+localStorage.getItem('token'));
                     
-                    // Dispatch custom event to notify all components about auth change
                     window.dispatchEvent(new Event('auth-change'));
                     
                     navigate('/');  
@@ -127,7 +123,6 @@ function Login() {
                                 </div>
                             </div>
                             
-                            {/* Form Section */}
                             <div className="card-body p-5">
                                 <form onSubmit={handleSubmit} noValidate>
                                     {/* Email Field */}
@@ -157,7 +152,6 @@ function Login() {
                                         </div>
                                     </div>
 
-                                    {/* Password Field */}
                                     <div className="mb-3">
                                         <label htmlFor="password" className="form-label fw-medium text-muted">Password</label>
                                         <div className="input-group has-validation">
@@ -189,7 +183,6 @@ function Login() {
                                         </div>
                                     </div>
 
-                                    {/* Form Error Message */}
                                     {errors.form && (
                                         <div className="alert alert-danger alert-dismissible fade show d-flex align-items-center mb-4">
                                             <FaExclamationCircle className="me-2 flex-shrink-0" />
@@ -202,7 +195,6 @@ function Login() {
                                         </div>
                                     )}
 
-                                    {/* Submit Button */}
                                     <div className="d-grid mb-3">
                                         <button 
                                             type="submit" 
@@ -220,7 +212,6 @@ function Login() {
                                         </button>
                                     </div>
 
-                                    {/* Divider */}
                                     <div className="position-relative my-4">
                                         <hr />
                                         <div className="position-absolute top-50 start-50 translate-middle bg-white px-2 small text-muted">
@@ -228,7 +219,6 @@ function Login() {
                                         </div>
                                     </div>
 
-                                    {/* Sign Up Link */}
                                     <div className="text-center">
                                         <p className="mb-0">Don't have an account? 
                                             <Link to="/signup" className="text-decoration-none text-primary fw-medium ms-1">
@@ -243,7 +233,6 @@ function Login() {
                 </div>
             </div>
             
-            {/* CSS styles */}
             <style>
                 {`
                     .bg-gradient-primary {

@@ -3,17 +3,21 @@ const mongoose = require('mongoose');
 const cors = require('cors');
 const SignUpModel = require('./models/SignUpSchema');
 const Results = require('./models/ResultSchema');
+require('dotenv').config();
+
 
 const app = express();
 app.use(express.json());
 app.use(cors());
 
-mongoose.connect("mongodb+srv://nikhilsolanki9876:23bce198@cluster0.a9bwwoh.mongodb.net/UserDetails/")
+const URL = process.env.MONGODB_URL;
+
+mongoose.connect(`${URL}/UserDetails/`)
     .then(() => {
         console.log("MongoDB connected");
     })
     .catch(() => {
-        console.log("Failed to connect MongoDB");
+        console.log(`Failed to connect MongoDB1 ${URL}`);
     });
 
 app.post('/Signup', (req, res) => {
@@ -76,6 +80,7 @@ app.post('/SaveQuizResults', async (req, res) => {
       }
     });
 
-app.listen(10000, () => {
-    console.log("Server Running on port 10000");
-});
+    const PORT = process.env.PORT || 10000;
+    app.listen(PORT, () => {
+      console.log(`Server Running on port ${process.env.PORT}`);
+    });

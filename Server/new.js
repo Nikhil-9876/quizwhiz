@@ -13,6 +13,7 @@ app.use(cors({
   credentials: true
 }));
 
+
 const URL = process.env.MONGODB_URL;
 
 mongoose.connect(`${URL}/UserDetails/`)
@@ -23,10 +24,15 @@ mongoose.connect(`${URL}/UserDetails/`)
         console.log(`Failed to connect MongoDB1 ${URL}`);
     });
 
-app.post('/Signup', (req, res) => {
+
+    app.post('/Signup', (req, res) => {
     SignUpModel.create(req.body)
         .then(userDetails => res.json({ message: "User registered successfully!", userDetails }))
         .catch(err => res.status(500).json({ error: err.message }));
+});
+
+app.get('/', (req, res) => {
+  res.send('Backend is running!');
 });
 
 app.post('/Login', async (req, res) => {

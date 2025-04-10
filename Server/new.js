@@ -16,12 +16,12 @@ app.use(cors({
 
 const URL = process.env.MONGODB_URL;
 
-mongoose.connect(`${URL}/UserDetails/`)
+mongoose.connect(`${URL}/UserDetails`)
     .then(() => {
         console.log("MongoDB connected");
     })
     .catch(() => {
-        console.log(`Failed to connect MongoDB1 ${URL}`);
+        console.log(`Failed to connect MongoDB ${URL}`);
     });
 
 

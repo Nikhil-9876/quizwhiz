@@ -88,7 +88,7 @@ function Header() {
                   >
                     <div className="profile-picture-container relative w-10 h-10 rounded-full bg-white border-1 border-black z-10 overflow-hidden">
                       <img
-                        src="public/Images/person.jpeg"
+                        src="public/Images/person.png"
                         alt="Profile"
                         className="w-full h-full object-cover transition-transform duration-300"
                       />

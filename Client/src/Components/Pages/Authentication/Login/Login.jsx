@@ -3,8 +3,11 @@ import axios from 'axios';
 import { useNavigate } from 'react-router-dom';
 import { FaUser, FaLock, FaExclamationCircle } from 'react-icons/fa';
 import { Link } from 'react-router-dom';
-
+import './Login.css'
 function Login() {
+
+    const URL = import.meta.env.VITE_API_URL;
+
     const [formData, setFormData] = useState({
         email: '',
         password: ''
@@ -83,14 +86,10 @@ function Login() {
             setIsLoading(true);
             setErrors(prev => ({ ...prev, form: '' }));
             
-            axios.post('https://quizwhiz-ntn9.onrender.com/Login', formData)
+            axios.post(`${URL}/user/checkuser`, formData)
                 .then(result => {
-                    console.log("Login successful:", result.data);
-                    localStorage.setItem('token', formData.email);
-                    console.log("Token stored in local storage: "+localStorage.getItem('token'));
-                    
+                    localStorage.setItem('token', result.data.authToken);
                     window.dispatchEvent(new Event('auth-change'));
-                    
                     navigate('/');  
                 })
                 .catch(err => {
@@ -232,48 +231,6 @@ function Login() {
                     </div>
                 </div>
             </div>
-            
-            <style>
-                {`
-                    .bg-gradient-primary {
-                        background: linear-gradient(135deg, #f5f7fa 0%, #e4f0fb 100%);
-                    }
-                    .card {
-                        transition: transform 0.3s ease, box-shadow 0.3s ease;
-                    }
-                    .card:hover {
-                        transform: translateY(-5px);
-                        box-shadow: 0 10px 20px rgba(0, 0, 0, 0.1) !important;
-                    }
-                    .form-control:focus {
-                        border-color: #4dabf7;
-                        box-shadow: 0 0 0 0.25rem rgba(77, 171, 247, 0.25);
-                    }
-                    .btn-primary {
-                        background-color: #4dabf7;
-                        border-color: #4dabf7;
-                        transition: all 0.3s ease;
-                    }
-                    .btn-primary:hover {
-                        background-color: #339af0;
-                        border-color: #339af0;
-                        transform: translateY(-1px);
-                    }
-                    .input-group-text {
-                        transition: background-color 0.3s ease;
-                    }
-                    .is-invalid {
-                        border-color: #dc3545;
-                    }
-                    .is-invalid:focus {
-                        box-shadow: 0 0 0 0.25rem rgba(220, 53, 69, 0.25);
-                    }
-                    .invalid-feedback {
-                        color: #dc3545;
-                        font-size: 0.875em;
-                    }
-                `}
-            </style>
         </div>
     );
 }

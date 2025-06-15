@@ -139,7 +139,7 @@ function About() {
         </div>
       </div>
 
-      {/* Team Section */}
+      {/* Team Section
       <div className="relative z-10 py-20 dark:bg-black">
         <div className="container mx-auto px-4">
           <div className="max-w-4xl mx-auto text-center mb-16">
@@ -208,7 +208,7 @@ function About() {
             ))}
           </div>
         </div>
-      </div>
+      </div> */}
 
       {/* Tech Stack */}
       <div className="relative z-10 py-20 dark:bg-black backdrop-blur-lg">

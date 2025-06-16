@@ -417,9 +417,9 @@
     border-top: 3px solid #ffffff;
     width: 20px;
     height: 20px;
-    animation: quiz-spin 1s linear infinite;
+    transform: rotate(1deg);
+    animation: spin 1s linear infinite;
   }
-  
   
   .quiz-generating-message {
     margin-top: 15px;

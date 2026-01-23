@@ -4,7 +4,7 @@ import "./Quiz.css";
 
 function Quiz() {
   const URL = import.meta.env.VITE_API_URL;
-  const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
+  const groqApiKey = import.meta.env.VITE_GROQ_API_KEY; // Add this to your .env file
 
   const [config, setConfig] = useState({
     topic: "",
@@ -76,34 +76,29 @@ function Quiz() {
     setIsLoading(true);
 
     try {
-      if (!apiKey) throw new Error("API Key is missing");
+      if (!groqApiKey) throw new Error("Groq API Key is missing. Add VITE_GROQ_API_KEY to .env");
 
-      const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`;
+      const url = `https://api.groq.com/openai/v1/chat/completions`;
 
       const response = await fetch(url, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
+          "Authorization": `Bearer ${groqApiKey}`,
         },
         body: JSON.stringify({
-          contents: [
-            {
-              parts: [
-                {
-                  text: `Generate ${config.numQuestions} multiple-choice questions (MCQs) with difficulty level "${config.difficulty}" on the topic "${config.topic}". Return JSON only in the format:
-                  [
-                    {
-                      "id": 1,
-                      "text": "Question text?",
-                      "options": ["Option 1", "Option 2", "Option 3", "Option 4"],
-                      "correctAnswer": "Option X"
-                    },
-                    ...
-                  ]`,
-                },
-              ],
-            },
-          ],
+          model: "llama-3.3-70b-versatile",
+          messages: [{
+            role: "user",
+            content: `Generate exactly ${config.numQuestions} multiple-choice questions (MCQs) with difficulty level "${config.difficulty}" on the topic "${config.topic}". Return CLEAN JSON array only, no markdown, no explanations:
+
+[
+  {"id":1,"text":"Question text?","options":["A) Option 1","B) Option 2","C) Option 3","D) Option 4"],"correctAnswer":"A) Option 1"},
+  {"id":2,"text":"Question 2?","options":["A) Option 1","B) Option 2","C) Option 3","D) Option 4"],"correctAnswer":"B) Option 2"}
+]`
+          }],
+          max_tokens: 3000,
+          temperature: 0.7
         }),
       });
 
@@ -111,20 +106,28 @@ function Quiz() {
         throw new Error(`HTTP error! status: ${response.status}`);
 
       const data = await response.json();
-      let rawText = data?.candidates?.[0]?.content?.parts?.[0]?.text || "";
+      let rawText = data?.choices?.[0]?.message?.content || "";
+      
       rawText = rawText.replace(/```json|```/g, "").trim();
 
       let aiQuestions = [];
       try {
         aiQuestions = JSON.parse(rawText);
       } catch (error) {
-        console.error("Error parsing AI response:", error);
-        throw new Error("Invalid AI-generated question format");
+        console.error("Error parsing AI response:", error, rawText);
+        throw new Error("Invalid AI-generated question format. Try shorter topic.");
       }
 
       if (!Array.isArray(aiQuestions) || aiQuestions.length === 0) {
         throw new Error("Empty or invalid AI-generated questions");
       }
+
+      aiQuestions = aiQuestions.map((q, index) => ({
+        id: q.id || index + 1,
+        text: q.text || q.question || "Question unavailable",
+        options: q.options || [],
+        correctAnswer: q.correctAnswer || q.correct || q.answer || q.options[0]
+      }));
 
       setQuestions(aiQuestions);
       localStorage.setItem("quizQuestions", JSON.stringify(aiQuestions));
@@ -139,39 +142,38 @@ function Quiz() {
   };
 
   const handleConfigSubmit = async () => {
-  setError(null);
-  setIsLoading(true);
+    setError(null);
+    setIsLoading(true);
 
-  // Clear stored questions to force new generation
-  localStorage.removeItem("quizQuestions");
+    localStorage.removeItem("quizQuestions");
 
-  try {
-    const aiQuestions = await handleCompletion();
+    try {
+      const aiQuestions = await handleCompletion();
 
-    if (!aiQuestions || aiQuestions.length === 0) {
-      throw new Error("Failed to generate questions");
+      if (!aiQuestions || aiQuestions.length === 0) {
+        throw new Error("Failed to generate questions");
+      }
+
+      setQuestions(aiQuestions);
+      setShowConfigModal(false);
+      setQuizStarted(true);
+      setTimer(config.timerDuration);
+      setTotalTime(
+        config.timerType === "individual"
+          ? config.timerDuration * config.numQuestions
+          : config.timerDuration * 60
+      );
+      setStartTime(new Date());
+      setUserAnswers([]);
+      setCurrentQuestionIndex(0);
+      setQuizFinished(false);
+    } catch (error) {
+      console.error("Error in handleConfigSubmit:", error);
+      setError(error.message || "Failed to generate questions. Please try again.");
+    } finally {
+      setIsLoading(false);
     }
-
-    setQuestions(aiQuestions);
-    setShowConfigModal(false);
-    setQuizStarted(true);
-    setTimer(config.timerDuration);
-    setTotalTime(
-      config.timerType === "individual"
-        ? config.timerDuration * config.numQuestions
-        : config.timerDuration * 60
-    );
-    setStartTime(new Date());
-    setUserAnswers([]);
-    setCurrentQuestionIndex(0);
-    setQuizFinished(false);
-  } catch (error) {
-    console.error("Error in handleConfigSubmit:", error);
-    setError(error.message || "Failed to generate questions. Please try again.");
-  } finally {
-    setIsLoading(false);
-  }
-};
+  };
 
   const finishQuiz = useCallback(
     async (answers) => {
@@ -189,7 +191,6 @@ function Quiz() {
           (answer, index) => answer === questions[index]?.correctAnswer
         ).length;
 
-        // Create a detailed results object
         const detailedResults = {
           date: new Date().toISOString(),
           topic: config.topic,
@@ -228,51 +229,49 @@ function Quiz() {
   );
 
   const goToNextQuestion = useCallback(() => {
-  if (isTransitioning) return;
-  
-  setIsTransitioning(true);
-  setTimer(0); // Clear any existing timer
-  
-  setTimeout(() => {
-    if (currentQuestionIndex < questions.length - 1) {
-      setCurrentQuestionIndex(prev => {
-        if (prev >= questions.length - 1) return prev;
-        return prev + 1;
-      });
-      if (config.timerType === "individual") {
-        setTimer(config.timerDuration);
+    if (isTransitioning) return;
+    
+    setIsTransitioning(true);
+    setTimer(0);
+    
+    setTimeout(() => {
+      if (currentQuestionIndex < questions.length - 1) {
+        setCurrentQuestionIndex(prev => {
+          if (prev >= questions.length - 1) return prev;
+          return prev + 1;
+        });
+        if (config.timerType === "individual") {
+          setTimer(config.timerDuration);
+        }
+        setSelectedOption(null);
+      } else {
+        finishQuiz(userAnswers);
       }
-      setSelectedOption(null);
-    } else {
-      finishQuiz(userAnswers);
-    }
-    setIsTransitioning(false);
-  }, 500);
-}, [currentQuestionIndex, questions.length, config.timerDuration, config.timerType, finishQuiz, userAnswers, isTransitioning]);
-
+      setIsTransitioning(false);
+    }, 500);
+  }, [currentQuestionIndex, questions.length, config.timerDuration, config.timerType, finishQuiz, userAnswers, isTransitioning]);
 
   const handleTimeUp = useCallback(() => {
-  if (isTransitioning) return;
-  
-  setIsTransitioning(true);
-  setTimer(0);
-  setTimeout(() => {
-    if (currentQuestionIndex < questions.length - 1) {
-      setCurrentQuestionIndex(prev => {
-        // Ensure we don't go beyond the last question
-        if (prev >= questions.length - 1) return prev;
-        return prev + 1;
-      });
-      if (config.timerType === "individual") {
-        setTimer(config.timerDuration);
+    if (isTransitioning) return;
+    
+    setIsTransitioning(true);
+    setTimer(0);
+    setTimeout(() => {
+      if (currentQuestionIndex < questions.length - 1) {
+        setCurrentQuestionIndex(prev => {
+          if (prev >= questions.length - 1) return prev;
+          return prev + 1;
+        });
+        if (config.timerType === "individual") {
+          setTimer(config.timerDuration);
+        }
+        setSelectedOption(null);
+      } else {
+        finishQuiz(userAnswers);
       }
-      setSelectedOption(null);
-    } else {
-      finishQuiz(userAnswers);
-    }
-    setIsTransitioning(false);
-  }, 500);
-}, [currentQuestionIndex, questions.length, config.timerDuration, finishQuiz, userAnswers, isTransitioning]);
+      setIsTransitioning(false);
+    }, 500);
+  }, [currentQuestionIndex, questions.length, config.timerDuration, finishQuiz, userAnswers, isTransitioning]);
 
   const handleAnswerSelect = (answer) => {
     if (isTransitioning) return;
@@ -303,35 +302,35 @@ function Quiz() {
   }, [goToNextQuestion, quizStarted, quizFinished, showConfigModal]);
 
   useEffect(() => {
-  let interval = null;
-  
-  if (quizStarted && !quizFinished && !isTransitioning) {
-    interval = setInterval(() => {
-      if (config.timerType === "individual") {
-        setTimer((prev) => {
-          if (prev <= 1) {
-            clearInterval(interval);
-            return 0;
-          }
-          return prev - 1;
-        });
-      } else {
-        setTotalTime((prev) => {
-          if (prev <= 1) {
-            clearInterval(interval);
-            setTimeout(() => finishQuiz(userAnswers), 0); // Schedule for next tick
-            return 0;
-          }
-          return prev - 1;
-        });
-      }
-    }, 1000);
-  }
-  
-  return () => {
-    if (interval) clearInterval(interval);
-  };
-}, [quizStarted, quizFinished, config.timerType, isTransitioning, handleTimeUp, finishQuiz, userAnswers]);
+    let interval = null;
+    
+    if (quizStarted && !quizFinished && !isTransitioning) {
+      interval = setInterval(() => {
+        if (config.timerType === "individual") {
+          setTimer((prev) => {
+            if (prev <= 1) {
+              clearInterval(interval);
+              return 0;
+            }
+            return prev - 1;
+          });
+        } else {
+          setTotalTime((prev) => {
+            if (prev <= 1) {
+              clearInterval(interval);
+              setTimeout(() => finishQuiz(userAnswers), 0);
+              return 0;
+            }
+            return prev - 1;
+          });
+        }
+      }, 1000);
+    }
+    
+    return () => {
+      if (interval) clearInterval(interval);
+    };
+  }, [quizStarted, quizFinished, config.timerType, isTransitioning, handleTimeUp, finishQuiz, userAnswers]);
 
   useEffect(() => {
     if (quizStarted && !quizFinished && !isTransitioning) {
@@ -341,8 +340,7 @@ function Quiz() {
         finishQuiz(userAnswers);
       }
     }
-  }, [timer,totalTime,quizStarted,quizFinished,config.timerType,handleTimeUp,finishQuiz,userAnswers,isTransitioning,
-  ]);
+  }, [timer, totalTime, quizStarted, quizFinished, config.timerType, handleTimeUp, finishQuiz, userAnswers, isTransitioning]);
 
   const calculateScore = () => {
     return userAnswers.filter(
@@ -369,90 +367,93 @@ function Quiz() {
   };
 
   return (
-        <div className="quiz-page-wrapper z-0 dark:bg-black dark:text-white ">
+    <div className="quiz-page-wrapper z-0 dark:bg-black dark:text-white ">
       {showConfigModal && (
-          <div className="quiz-modal dark:border-gray-700 dark:bg-gray-950 shadow-lg">
-            <span className="text-transparent bg-clip-text bg-gradient-to-r quiz-modal-title from-blue-500 to-indigo-600">
-              Quiz Configuration
-            </span>
-            {error && <div className="quiz-error-message">{error}</div>}
+        <div className="quiz-modal dark:border-gray-700 dark:bg-gray-950 shadow-lg">
+          <span className="text-transparent bg-clip-text bg-gradient-to-r quiz-modal-title from-blue-500 to-indigo-600">
+            Quiz Configuration
+          </span>
+          {error && <div className="quiz-error-message">{error}</div>}
 
-            <label className="quiz-label dark:text-white">
-              Topic:
-              <input
-                type="text"
-                value={config.topic}
-                onChange={handleTopicChange}
-                className="quiz-input dark:bg-black/50 dark:text-white dark:placeholder-gray-300 "
-                placeholder="Enter a topic for your quiz"
-              />
-            </label>
-            <label className="quiz-label dark:text-white">
-              Difficulty:
-              <select
-                value={config.difficulty}
-                onChange={handleDifficultyChange}
-                className="quiz-input dark:bg-black/50 dark:text-white"
-              >
-                <option value="easy">Easy</option>
-                <option value="medium">Medium</option>
-                <option value="hard">Hard</option>
-              </select>
-            </label>
-
-            <label className="quiz-label dark:text-white">
-              Number of Questions:
-              <input
-                type="number"
-                value={config.numQuestions}
-                onChange={handleNumQuestionsChange}
-                className="quiz-input dark:bg-black/50 dark:text-white"
-              />
-            </label>
-
-            <label className="quiz-label dark:text-white">
-              Timer Type:
-              <select
-                value={config.timerType}
-                onChange={(e) => setConfig({ ...config, timerType: e.target.value })}
-                className="quiz-input dark:bg-black/50 dark:text-white"
-              >
-                <option value="individual">Individual</option>
-                <option value="collective">Collective</option>
-              </select>
-            </label>
-
-            <label className="quiz-label dark:text-white">
-              Timer Duration ({config.timerType === "individual" ? "seconds" : "minutes"}):
-              <input
-                type="number"
-                value={config.timerDuration}
-                onChange={(e) => setConfig({ ...config, timerDuration: parseInt(e.target.value) })}
-                className="quiz-input dark:bg-black/50 dark:text-white"
-              />
-            </label>
-
-            <button
-              onClick={handleConfigSubmit}
-              className="quiz-button dark:bg-green-500 dark:hover:bg-green-600"
-              disabled={isLoading}
+          <label className="quiz-label dark:text-white">
+            Topic:
+            <input
+              type="text"
+              value={config.topic}
+              onChange={handleTopicChange}
+              className="quiz-input dark:bg-black/50 dark:text-white dark:placeholder-gray-300 "
+              placeholder="Enter a topic for your quiz"
+            />
+          </label>
+          <label className="quiz-label dark:text-white">
+            Difficulty:
+            <select
+              value={config.difficulty}
+              onChange={handleDifficultyChange}
+              className="quiz-input dark:bg-black/50 dark:text-white"
             >
-              {isLoading ? (
-                <div className="quiz-spinner-container">
-                  <div className="quiz-spinner"></div>
-                  Generating Questions...
-                </div>
-              ) : (
-                "Start Quiz"
-              )}
-            </button>
+              <option value="easy">Easy</option>
+              <option value="medium">Medium</option>
+              <option value="hard">Hard</option>
+            </select>
+          </label>
 
-            {isLoading && (
-              <div className="quiz-generating-message">
-                Please wait while we generate your quiz questions...
+          <label className="quiz-label dark:text-white">
+            Number of Questions:
+            <input
+              type="number"
+              value={config.numQuestions}
+              onChange={handleNumQuestionsChange}
+              className="quiz-input dark:bg-black/50 dark:text-white"
+              min="1"
+              max="20"
+            />
+          </label>
+
+          <label className="quiz-label dark:text-white">
+            Timer Type:
+            <select
+              value={config.timerType}
+              onChange={(e) => setConfig({ ...config, timerType: e.target.value })}
+              className="quiz-input dark:bg-black/50 dark:text-white"
+            >
+              <option value="individual">Individual</option>
+              <option value="collective">Collective</option>
+            </select>
+          </label>
+
+          <label className="quiz-label dark:text-white">
+            Timer Duration ({config.timerType === "individual" ? "seconds" : "minutes"}):
+            <input
+              type="number"
+              value={config.timerDuration}
+              onChange={(e) => setConfig({ ...config, timerDuration: parseInt(e.target.value) })}
+              className="quiz-input dark:bg-black/50 dark:text-white"
+              min="5"
+            />
+          </label>
+
+          <button
+            onClick={handleConfigSubmit}
+            className="quiz-button dark:bg-green-500 dark:hover:bg-green-600"
+            disabled={isLoading || !config.topic.trim()}
+          >
+            {isLoading ? (
+              <div className="quiz-spinner-container">
+                <div className="quiz-spinner"></div>
+                Generating Questions...
               </div>
+            ) : (
+              "Start Quiz"
             )}
-          </div>
+          </button>
+
+          {isLoading && (
+            <div className="quiz-generating-message">
+              Please wait while we generate your quiz questions...
+            </div>
+          )}
+        </div>
       )}
 
       {quizStarted && !quizFinished && (
@@ -517,10 +518,10 @@ function Quiz() {
 
             <div className="quiz-score-circle dark:bg-black dark:border-gray-600">
               <div className="quiz-score-inner dark:bg-black">
-                <span className="quiz-score-value  dark:text-white">
+                <span className="quiz-score-value dark:text-white">
                   {calculateScore()}/{questions.length}
                 </span>
-                <span className="quiz-score-percentage ">
+                <span className="quiz-score-percentage">
                   {calculatePercentage()}%
                 </span>
               </div>
@@ -530,29 +531,28 @@ function Quiz() {
 
             <div className="quiz-results-details dark:bg-white/5">
               <div className="quiz-result-item">
-                <span className="quiz-result-label  dark:text-white">Topic:</span>
-                <span className="quiz-result-value  dark:text-white">
+                <span className="quiz-result-label dark:text-white">Topic:</span>
+                <span className="quiz-result-value dark:text-white">
                   {config.topic || "General"}
                 </span>
               </div>
 
               <div className="quiz-result-item">
-                <span className="quiz-result-label  dark:text-white">Difficulty:</span>
-                <span className="quiz-result-value dark:text-white"  >{config.difficulty}</span>
+                <span className="quiz-result-label dark:text-white">Difficulty:</span>
+                <span className="quiz-result-value dark:text-white">{config.difficulty}</span>
               </div>
 
               <div className="quiz-result-item">
-                <span className="quiz-result-label  dark:text-white">Time taken:</span>
-                <span className="quiz-result-value  dark:text-white">
+                <span className="quiz-result-label dark:text-white">Time taken:</span>
+                <span className="quiz-result-value dark:text-white">
                   {actualTimeTaken.toFixed(2)} seconds
                 </span>
               </div>
             </div>
 
             {!localStorage.getItem("token") && (
-              <div className="quiz-not-logged-in-message  dark:bg-transparent">
-                You're not logged in. These results won't be saved to your
-                profile.
+              <div className="quiz-not-logged-in-message dark:bg-transparent">
+                You're not logged in. These results won't be saved to your profile.
               </div>
             )}
 
@@ -569,7 +569,6 @@ function Quiz() {
         </div>
       )}
     </div>
-
   );
 }
 

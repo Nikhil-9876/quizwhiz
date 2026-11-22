@@ -87,7 +87,7 @@ function Quiz() {
           "Authorization": `Bearer ${groqApiKey}`,
         },
         body: JSON.stringify({
-          model: "llama-3.1-8b-instant",
+          model: "openai/gpt-oss-20b",
           messages: [{
             role: "user",
             content: `Generate exactly ${config.numQuestions} multiple-choice questions (MCQs) with difficulty level "${config.difficulty}" on the topic "${config.topic}". Return CLEAN JSON array only, no markdown, no explanations:

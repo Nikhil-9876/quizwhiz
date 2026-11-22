@@ -110,7 +110,7 @@ function Quiz() {
 
       const data = await response.json();
       let rawText = data?.choices?.[0]?.message?.content || "";
-      
+
       rawText = rawText.replace(/```json|```/g, "").trim();
 
       let aiQuestions = [];
@@ -233,10 +233,10 @@ function Quiz() {
 
   const goToNextQuestion = useCallback(() => {
     if (isTransitioning) return;
-    
+
     setIsTransitioning(true);
     setTimer(0);
-    
+
     setTimeout(() => {
       if (currentQuestionIndex < questions.length - 1) {
         setCurrentQuestionIndex(prev => {
@@ -256,7 +256,7 @@ function Quiz() {
 
   const handleTimeUp = useCallback(() => {
     if (isTransitioning) return;
-    
+
     setIsTransitioning(true);
     setTimer(0);
     setTimeout(() => {
@@ -306,7 +306,7 @@ function Quiz() {
 
   useEffect(() => {
     let interval = null;
-    
+
     if (quizStarted && !quizFinished && !isTransitioning) {
       interval = setInterval(() => {
         if (config.timerType === "individual") {
@@ -329,7 +329,7 @@ function Quiz() {
         }
       }, 1000);
     }
-    
+
     return () => {
       if (interval) clearInterval(interval);
     };
@@ -481,9 +481,8 @@ function Quiz() {
               <button
                 key={index}
                 onClick={() => handleAnswerSelect(option)}
-                className={`quiz-option-button ${
-                  selectedOption === option ? "quiz-option-selected" : ""
-                } dark:bg-black dark:hover:bg-gray-600 dark:text-white`}
+                className={`quiz-option-button ${selectedOption === option ? "quiz-option-selected" : ""
+                  } dark:bg-black dark:hover:bg-gray-600 dark:text-white`}
               >
                 {option}
               </button>

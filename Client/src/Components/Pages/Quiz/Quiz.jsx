@@ -87,7 +87,7 @@ function Quiz() {
           "Authorization": `Bearer ${groqApiKey}`,
         },
         body: JSON.stringify({
-          model: "llama-3.3-70b-versatile",
+          model: "llama-3.1-8b-instant",
           messages: [{
             role: "user",
             content: `Generate exactly ${config.numQuestions} multiple-choice questions (MCQs) with difficulty level "${config.difficulty}" on the topic "${config.topic}". Return CLEAN JSON array only, no markdown, no explanations:
@@ -102,8 +102,11 @@ function Quiz() {
         }),
       });
 
-      if (!response.ok)
-        throw new Error(`HTTP error! status: ${response.status}`);
+      if (!response.ok) {
+        const errData = await response.json().catch(() => ({}));
+        const msg = errData?.error?.message || `HTTP error! status: ${response.status}`;
+        throw new Error(msg);
+      }
 
       const data = await response.json();
       let rawText = data?.choices?.[0]?.message?.content || "";
